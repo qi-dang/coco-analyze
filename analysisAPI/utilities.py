@@ -7,21 +7,13 @@ import matplotlib.path as mplPath
 from matplotlib.collections import PatchCollection
 from matplotlib.patches import Polygon
 import skimage.io as io
+from .configs import num_kpts, colors, sigmas,skeleton, variances
 
 """
 Utility functions
 """
-num_kpts  = 17
 oks       = [0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95]
 sqrt_neg_log_oks = np.sqrt(-2*np.log(oks))
-sigmas    = np.array([.26, .25, .25, .35, .35, .79, .79, .72, .72, .62,.62, 1.07, 1.07, .87, .87, .89, .89])/10.0
-variances = (sigmas * 2)**2
-skeleton  = [[16, 14], [14, 12], [17, 15], [15, 13], [12, 13], [6, 12], [7, 13], [6, 7], [6, 8], [7, 9],
-            [8, 10], [9, 11], [2, 3], [1, 2], [1, 3], [2, 4], [3, 5], [4, 6], [5, 7]]
-colors    = {(0,1): '#cd87ff', (0,2): '#cd87ff', (1,2): '#cd87ff', (1,3): '#cd87ff', (2,4): '#cd87ff',
-            (3,5): '#74c8f9', (4,6): '#74c8f9', (5,6): '#feff95', (5,7): '#74c8f9', (5,11): '#feff95',
-            (6,8): '#74c8f9', (6,12): '#feff95',(7,9): '#74c8f9', (8,10): '#74c8f9',(11,12): '#feff95',
-            (13,11): '#a2805b',(14,12): '#a2805b',(15,13): '#a2805b',(16,14): '#a2805b'}
 
 def show_dets(coco_dts, coco_gts, img_info, save_path=None):
     if len(coco_dts) == 0 and len(coco_gts)==0:

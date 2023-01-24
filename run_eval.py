@@ -1,6 +1,5 @@
 from pycocotools.coco import COCO
 from pycocotools.cocoeval import COCOeval
-from pycocotools.cocoanalyze import COCOanalyze
 import numpy as np
 import argparse
 import json

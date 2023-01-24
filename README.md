@@ -26,16 +26,25 @@ Use the Makefile to install the coco-analyze api:
 ### Usage
 To run the extended multi-instance keypoint estimation error analysis: update the paths of the detections and annotations and execute the command line.
 
-    [annFile]  -> ./annotations/keypoints_val2014.json
-    [dtsFile]  -> ./detections/fakekeypoints100_keypoints_val2014_results.json
-    [saveDir]  -> ./results/fakekeypoints100
-    [teamName] -> fakekeypoints100
+    [annFile]  -> ./annotations/soccer_groundtruth.json
+    [dtsFile]  -> ./detections/pipeline_soccer_result.json
+    [saveDir]  -> ./results/soccer
+    [teamName] -> pipeline
     [version]  -> 1.0
     $ python run_analysis.py [annFile] [dtsFile] [saveDir] [teamName] [version]
+    $ python run_analysis.py annotations/soccer_groundtruth.json detections/pipeline_soccer_result.json results/soccer pipeline 1.0
+
+### Run evaluation in a new dataset
+To run the analysis in a new dataset, you must need to change some parameters in the code, for example sigmas and keypoints names. There are two files needed to be revised:
+
+In run_analysis.py, you need to add the sigmas in new dataset.
+
+In pycocotools/cocoanalyze.py, you need to add the keypoint names of the new dataset in the Params class.
 
 ### Results
- - A summary file called `[teamName]_performance_report.tex` will be created once the analysis is complete.
- - All the generated plots are stored using `[saveDir]` as the base directory.
+ - We just have the precision recall curve in this stage, the other analysis part doesn't work properly as I expected. I have commented out all the other analysis for specific type of error. 
+ - A summary file called `[teamName]_performance_report.tex` will be created once the analysis is complete. (we don't have this since the analysis part doesn't work well)
+ - All the generated plots are stored using `[saveDir]` as the base directory. 
  - Additional *std_output* information regarding the analysis can be found in the text files named `std_out.txt`.
 
 ### Automatically Generated Performance Reports

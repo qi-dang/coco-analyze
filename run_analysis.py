@@ -1,6 +1,7 @@
 ## general imports
 import os, sys, json, datetime, jinja2
 from jinja2 import Template
+import numpy as np
 
 ## COCO imports
 from pycocotools.coco import COCO
@@ -48,8 +49,8 @@ def main():
     gt_data   = json.load(open(annFile,'r'))
     imgs_info = {i['id']:{'id'      :i['id'] ,
                           'width'   :i['width'],
-                          'height'  :i['height'],
-                          'coco_url':i['coco_url']}
+                          'height'  :i['height'],}
+                          #'coco_url':i['coco_url']}
                  for i in gt_data['images']}
 
     ## load team detections
@@ -70,14 +71,23 @@ def main():
     template_vars['num_imgs_dts'] = len(set([d['image_id'] for d in team_split_dts]))
     template_vars['num_imgs']     = len(imgs_info)
 
+    sigmas = {}
+    #                               ear    NECK r_sho/elb/wrist l_sho/elb/wri r_hip/knee/ankle l_hip/kn/ankle nose
+    sigmas['soccer'] = np.array([.35, .35, .55, .79, .72, .62, .79, .72, .62, 1.07, .87, .89, 1.07, .87, .89, .26])/10.0
+    #                                    ear    nose neck shoulder    elbox     wrist      HAND      hip        knee     ankle      FOOT
+    sigmas['basketball'] = np.array( [.35, .35, .26, .35, .79, .79, .72, .72, .62, .62, .62, .62, 1.07, 1.07, .87, .87, .89, .89, .87, .87])/10.0 # sigma in OKS for keypoint detection
+    sigmas['coco'] = None
+
     ## load ground truth annotations
     coco_gt = COCO( annFile )
+    #dataset = 'soccer'
+    dataset = 'soccer'
 
     ## initialize COCO detections api
     coco_dt   = coco_gt.loadRes( team_split_dts )
 
     ## initialize COCO analyze api
-    coco_analyze = COCOanalyze(coco_gt, coco_dt, 'keypoints')
+    coco_analyze = COCOanalyze(coco_gt, coco_dt, 'keypoints', sigmas[dataset], dataset=dataset)
     if teamName == 'fakekeypoints100':
         imgIds  = sorted(coco_gt.getImgIds())[0:100]
         coco_analyze.cocoEval.params.imgIds = imgIds
@@ -91,37 +101,37 @@ def main():
     ############################################################################
     # COMMENT OUT ANY OF THE BELOW TO SKIP FROM ANALYSIS
 
-    ## analyze imapct on AP of all error types
-    paths = errorsAPImpact( coco_analyze, saveDir )
-    template_vars.update(paths)
+    ### analyze imapct on AP of all error types
+    #paths = errorsAPImpact( coco_analyze, saveDir )
+    #template_vars.update(paths)
 
-    ## analyze breakdown of localization errors
-    paths = localizationErrors( coco_analyze, imgs_info, saveDir )
-    template_vars.update(paths)
+    ### analyze breakdown of localization errors
+    #paths = localizationErrors( coco_analyze, imgs_info, saveDir )
+    #template_vars.update(paths)
 
-    ## analyze scoring errors
-    paths = scoringErrors( coco_analyze, .75, imgs_info, saveDir )
-    template_vars.update(paths)
+    ### analyze scoring errors
+    #paths = scoringErrors( coco_analyze, .75, imgs_info, saveDir )
+    #template_vars.update(paths)
 
-    ## analyze background false positives
-    paths = backgroundFalsePosErrors( coco_analyze, imgs_info, saveDir )
-    template_vars.update(paths)
+    ### analyze background false positives
+    #paths = backgroundFalsePosErrors( coco_analyze, imgs_info, saveDir )
+    #template_vars.update(paths)
 
-    ## analyze background false negatives
-    paths = backgroundFalseNegErrors( coco_analyze, imgs_info, saveDir )
-    template_vars.update(paths)
+    ### analyze background false negatives
+    #paths = backgroundFalseNegErrors( coco_analyze, imgs_info, saveDir )
+    #template_vars.update(paths)
 
-    ## analyze sensitivity to occlusion and crowding of instances
-    paths = occlusionAndCrowdingSensitivity( coco_analyze, .75, saveDir )
-    template_vars.update(paths)
+    ### analyze sensitivity to occlusion and crowding of instances
+    #paths = occlusionAndCrowdingSensitivity( coco_analyze, .75, saveDir )
+    #template_vars.update(paths)
 
-    ## analyze sensitivity to size of instances
-    paths = sizeSensitivity( coco_analyze, .75, saveDir )
-    template_vars.update(paths)
+    ### analyze sensitivity to size of instances
+    #paths = sizeSensitivity( coco_analyze, .75, saveDir )
+    #template_vars.update(paths)
 
-    output_report = open('./%s_performance_report.tex'%teamName, 'w')
-    output_report.write( template.render(template_vars) )
-    output_report.close()
+    #output_report = open('./%s_performance_report.tex'%teamName, 'w')
+    #output_report.write( template.render(template_vars) )
+    #output_report.close()
 
 if __name__ == '__main__':
     main()

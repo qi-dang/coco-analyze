@@ -12,9 +12,12 @@ from colour import Color
 
 import skimage.io as io
 
+from ppretty import ppretty
+
+
 class COCOanalyze:
     # Interface for analyzing the keypoints detections on the Microsoft COCO dataset.
-    def __init__(self, cocoGt, cocoDt, iouType='keypoints'):
+    def __init__(self, cocoGt, cocoDt, iouType='keypoints', sigmas=None, dataset='soccer'):
         '''
         Initialize COCOanalyze using coco APIs for gt and dt
         :param cocoGt: coco object with ground truth annotations
@@ -26,7 +29,7 @@ class COCOanalyze:
         # detections COCO API
         self.cocoDt   = cocoDt
         # evaluation COCOeval API
-        self.cocoEval = COCOeval(cocoGt,cocoDt,iouType)
+        self.cocoEval = COCOeval(cocoGt,cocoDt,iouType,sigmas=sigmas)
         # gt for analysis
         self._gts = cocoGt.loadAnns(cocoGt.getAnnIds())
         # dt for analysis
@@ -44,7 +47,7 @@ class COCOanalyze:
         self.bckgd_err_matches    = {}
         # evaluation parameters
         self.params        = {}
-        self.params        = Params(iouType=iouType)
+        self.params        = Params(iouType=iouType,sigmas=sigmas,dataset=dataset)
         self.params.imgIds = sorted(cocoGt.getImgIds())
         self.params.catIds = sorted(cocoGt.getCatIds())
         # get the max number of detections each team has per image
@@ -921,23 +924,49 @@ class COCOanalyze:
 
 class Params:
     # Params for coco analyze api
-    def setKpParams(self):
+    def setKpParams(self, sigmas=None, dataset='soccer'):
         self.imgIds = []
         self.catIds = []
-        self.kpts_name     = \
-            [u'nose',u'left_eye', u'right_eye',u'left_ear', u'right_ear',
-             u'left_shoulder', u'right_shoulder', u'left_elbow', u'right_elbow',
-             u'left_wrist', u'right_wrist', u'left_hip', u'right_hip',
-             u'left_knee', u'right_knee', u'left_ankle', u'right_ankle']
-        self.inv_kpts_name = \
-            [u'nose', u'right_eye', u'left_eye', u'right_ear', u'left_ear',
-             u'right_shoulder', u'left_shoulder', u'right_elbow', u'left_elbow',
-             u'right_wrist', u'left_wrist', u'right_hip', u'left_hip',
-             u'right_knee', u'left_knee', u'right_ankle', u'left_ankle']
+        kpt_names = {}
+        inv_kpt_names = {}
+        kpt_names['soccer'] = ['left_ear', 'right_ear', 'neck', 'right_shoulder', 'right_elbow', 'right_wrist',
+                               'left_shoulder', 'left_elbow', 'left_wrist',
+                               'right_hip', 'right_knee', 'right_ankle',
+                               'left_hip', 'left_knee', 'left_ankle','nose']
+        inv_kpt_names['soccer'] = ['right_ear', 'left_ear', 'neck', 'left_shoulder', 'left_elbow', 'left_wrist',
+                               'right_shoulder', 'right_elbow', 'right_wrist',
+                               'left_hip', 'left_knee', 'left_ankle',
+                               'right_hip', 'right_knee', 'right_ankle','nose']
+        kpt_names['coco']     = \
+            ['nose','left_eye', 'right_eye','left_ear', 'right_ear',
+             'left_shoulder', 'right_shoulder', 'left_elbow', 'right_elbow',
+             'left_wrist', 'right_wrist', 'left_hip', 'right_hip',
+             'left_knee', 'right_knee', 'left_ankle', 'right_ankle']
+        inv_kpt_names['coco'] = \
+            ['nose', 'right_eye', 'left_eye', 'right_ear', 'left_ear',
+             'right_shoulder', 'left_shoulder', 'right_elbow', 'left_elbow',
+             'right_wrist', 'left_wrist', 'right_hip', 'left_hip',
+             'right_knee', 'left_knee', 'right_ankle', 'left_ankle']
+        #self.kpts_name     = \
+        #    [u'nose',u'left_eye', u'right_eye',u'left_ear', u'right_ear',
+        #     u'left_shoulder', u'right_shoulder', u'left_elbow', u'right_elbow',
+        #     u'left_wrist', u'right_wrist', u'left_hip', u'right_hip',
+        #     u'left_knee', u'right_knee', u'left_ankle', u'right_ankle']
+        #self.inv_kpts_name = \
+        #    [u'nose', u'right_eye', u'left_eye', u'right_ear', u'left_ear',
+        #     u'right_shoulder', u'left_shoulder', u'right_elbow', u'left_elbow',
+        #     u'right_wrist', u'left_wrist', u'right_hip', u'left_hip',
+        #     u'right_knee', u'left_knee', u'right_ankle', u'left_ankle']
+        self.kpts_name = kpt_names[dataset]
+        self.inv_kpts_name = inv_kpt_names[dataset]
         self.num_kpts = len(self.kpts_name)
         self.inv_idx  = [self.inv_kpts_name.index(self.kpts_name[i]) for i in range(self.num_kpts)]
-        self.sigmas   = np.array([.026,.025,.025, .035,.035, .079,.079, .072,.072,
-                                     .062,.062, .107,.107, .087,.087, .089,.089])
+        if sigmas is None:
+            # coco sigmas
+            self.sigmas   = np.array([.026,.025,.025, .035,.035, .079,.079, .072,.072,
+                                        .062,.062, .107,.107, .087,.087, .089,.089])
+        else:
+            self.sigmas = sigmas
         self.oksThrs  = np.array([.5 ,.55, .6, .65, .7, .75, .8, .85, .9, .95])
         # the threshold that determines the limit for localization error
         self.oksLocThrs = .1
@@ -945,14 +974,15 @@ class Params:
         self.jitterKsThrs = [.5,.85]
         self.maxDets      = [20]
         self.teamMaxDets  = []
-        self.areaRng      = [[32 ** 2, 1e5 ** 2],[32 ** 2, 96 ** 2],[96 ** 2, 1e5 ** 2]]
+        #self.areaRng      = [[32 ** 2, 1e5 ** 2],[32 ** 2, 96 ** 2],[96 ** 2, 1e5 ** 2]]
+        self.areaRng      = [[0, 1e5 ** 2],[32 ** 2, 96 ** 2],[96 ** 2, 1e5 ** 2]]
         self.areaRngLbl   = ['all','medium','large']
         self.err_types    = ['miss','swap','inversion','jitter']
         self.check_kpts   = True; self.check_scores = True; self.check_bckgd  = True
 
-    def __init__(self, iouType='keypoints'):
+    def __init__(self, iouType='keypoints', sigmas=None, dataset='soccer'):
         if iouType == 'keypoints':
-            self.setKpParams()
+            self.setKpParams(sigmas=sigmas, dataset=dataset)
         else:
             raise Exception('iouType *%s* not supported'%iouType)
         self.iouType = iouType
