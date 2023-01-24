@@ -37,9 +37,9 @@ To run the extended multi-instance keypoint estimation error analysis: update th
 ### Run evaluation in a new dataset
 To run the analysis in a new dataset, you must need to change some parameters in the code, for example sigmas and keypoints names. There are two files needed to be revised:
 
-In run_analysis.py, you need to add the sigmas in new dataset.
+ - In run_analysis.py, you need to add the sigmas in new dataset.
 
-In pycocotools/cocoanalyze.py, you need to add the keypoint names of the new dataset in the Params class.
+ - In pycocotools/cocoanalyze.py, you need to add the keypoint names of the new dataset in the Params class.
 
 ### Results
  - We just have the precision recall curve in this stage, the other analysis part doesn't work properly as I expected. I have commented out all the other analysis for specific type of error. 
