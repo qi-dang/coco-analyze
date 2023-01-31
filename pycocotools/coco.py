@@ -259,6 +259,99 @@ class COCO:
         elif type(ids) == int:
             return [self.imgs[ids]]
 
+    def showOksAnns(self, anns, oks, sigmas, with_skeleton=True):
+        """
+        Display the specified annotations.
+        :param anns (array of object): annotations to display
+        :return: None
+        """
+        if len(anns) == 0:
+            return 0
+        if "segmentation" in anns[0] or "keypoints" in anns[0]:
+            datasetType = "instances"
+        elif "caption" in anns[0]:
+            datasetType = "captions"
+        else:
+            raise Exception("datasetType not supported")
+        if datasetType == "instances":
+            ax = plt.gca()
+            ax.set_autoscale_on(False)
+            polygons = []
+            color = []
+            oks_colors = [
+                (255, 0, 0),
+                (255, 128, 0),
+                (255, 255, 0),
+                (0, 255, 0),
+                (0, 0, 255),
+            ]
+            oks_colors = [
+                (c[0] / 255.0, c[1] / 255.0, c[2] / 255.0) for c in oks_colors
+            ]
+            oks_thres = [0.5, 0.6, 0.7, 0.8, 0.9]
+            for ann in anns:
+                c = (np.random.random((1, 3)) * 0.6 + 0.4).tolist()[0]
+                if "segmentation" in ann:
+                    if type(ann["segmentation"]) == list:
+                        # polygon
+                        for seg in ann["segmentation"]:
+                            poly = np.array(seg).reshape((int(len(seg) / 2), 2))
+                            polygons.append(Polygon(poly))
+                            color.append(c)
+                    else:
+                        # mask
+                        t = self.imgs[ann["image_id"]]
+                        if type(ann["segmentation"]["counts"]) == list:
+                            rle = maskUtils.frPyObjects(
+                                [ann["segmentation"]], t["height"], t["width"]
+                            )
+                        else:
+                            rle = [ann["segmentation"]]
+                        m = maskUtils.decode(rle)
+                        img = np.ones((m.shape[0], m.shape[1], 3))
+                        if ann["iscrowd"] == 1:
+                            color_mask = np.array([2.0, 166.0, 101.0]) / 255
+                        if ann["iscrowd"] == 0:
+                            color_mask = np.random.random((1, 3)).tolist()[0]
+                        for i in range(3):
+                            img[:, :, i] = color_mask[i]
+                        ax.imshow(np.dstack((img, m * 0.5)))
+                if "keypoints" in ann and type(ann["keypoints"]) == list:
+                    # turn skeleton into zero-based index
+                    sks = np.array(self.loadCats(ann["category_id"])[0]["skeleton"]) - 1
+                    kp = np.array(ann["keypoints"])
+                    x = kp[0::3]
+                    y = kp[1::3]
+                    v = kp[2::3]
+                    area = ann["area"]
+                    if with_skeleton:
+                        for sk in sks:
+                            if np.all(v[sk] > 0):
+                                plt.plot(x[sk], y[sk], linewidth=2, color=c)
+                    assert len(oks_thres) == 5
+                    assert len(oks_colors) == 5
+                    for c_thre, oks in zip(oks_colors, oks_thres):
+                        calculte_d = np.sqrt(-2 * np.log(oks) * area) * sigmas
+                        # print('distance are', calculte_d)
+                        assert len(x) == len(sigmas)
+                        for i, (x1, y1, v1, r) in enumerate(zip(x, y, v, calculte_d)):
+                            if v1:
+                                circle = plt.Circle(
+                                    (x1, y1), r, fill=False, color=c_thre
+                                )
+                                ax.add_patch(circle)
+                    # plt.plot(x[v>0], y[v>0],'o',markersize=2, markerfacecolor=c, markeredgecolor='k',markeredgewidth=2)
+                    # plt.plot(x[v>1], y[v>1],'o',markersize=2, markerfacecolor=c, markeredgecolor=c, markeredgewidth=2)
+            p = PatchCollection(polygons, facecolor=color, linewidths=0, alpha=0.4)
+            ax.add_collection(p)
+            p = PatchCollection(
+                polygons, facecolor="none", edgecolors=color, linewidths=2
+            )
+            ax.add_collection(p)
+        elif datasetType == "captions":
+            for ann in anns:
+                print(ann["caption"])
+
     def showAnns(self, anns):
         """
         Display the specified annotations.
@@ -314,7 +407,7 @@ class COCO:
                     v = kp[2::3]
                     for sk in sks:
                         if np.all(v[sk] > 0):
-                            plt.plot(x[sk], y[sk], linewidth=3, color=c)
+                            plt.plot(x[sk], y[sk], linewidth=2, color=c)
                     plt.plot(
                         x[v > 0],
                         y[v > 0],
